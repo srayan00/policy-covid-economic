@@ -9,9 +9,57 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+# Install libraries if need be
+
+```{r}
+# install.packages("readxl")
+```
+
+
+# Load Libraries
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+ 
 # Data Loading
+
+```{r}
+# Path for policy data
+policy_file_path <- "data_policy_covid_economic/OxCGRT_compact_subnational_v1.csv"
+# Path for Unemployment data for Michigan
+michigan_unemployment <- "data_policy_covid_economic/unemployment/Michigan_S_Unemployment.xlsx"
+```
+
+
+## Policy data
+```{r}
+policy_world_data <- read.csv(policy_file_path)
+policy_us_data <- policy_world_data %>% 
+  filter(CountryCode == "USA")
+policy_mi_data <- policy_us_data %>% 
+  filter(RegionCode == "US_MI")
+rm(policy_world_data)
+```
+
+## Unemployment data for Michigan
+
+```{r}
+unemployment_mi_data <- read_excel(michigan_unemployment)
+```
+
+
+# Subsetting, Merging and Cleaning of Policy Data
 
 ```{r}
 
 ```
+
+
+
+
+
 
