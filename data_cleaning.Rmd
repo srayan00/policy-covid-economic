@@ -40,10 +40,26 @@ michigan_unemployment <- "data_policy_covid_economic/unemployment/Michigan_S_Une
 policy_world_data <- read.csv(policy_file_path)
 policy_us_data <- policy_world_data %>% 
   filter(CountryCode == "USA")
-policy_mi_data <- policy_us_data %>% 
-  filter(RegionCode == "US_MI")
 rm(policy_world_data)
 ```
+
+
+## Filter Data based on State of interest
+
+```{r}
+filter_by_state <- function(state){
+  policy_state_data <- policy_us_data %>% 
+    filter(RegionCode == state)
+  return(policy_state_data)
+}
+```
+
+
+```{r}
+policy_mi_data <- filter_by_state("US_MI")
+```
+
+
 
 ## Unemployment data for Michigan
 
@@ -54,9 +70,49 @@ unemployment_mi_data <- read_excel(michigan_unemployment)
 
 # Subsetting, Merging and Cleaning of Policy Data
 
-```{r}
+C2M_Workplace.closing is an ordinal variable which takes on these values
+0 - no measures
+1 - recommend closing (or recommend work from home) or all businesses open with alterations resulting in significant differences compared to non-Covid-19 operation
+2 - require closing (or work from home) for some sectors or categories of workers
+3 - require closing (or work from home) for all-but-essential workplaces (eg grocery stores, doctors)
+Blank - no data
 
+C2M_flag is an indicator variable which means
+0 - targeted (for the state specifically)
+1- general (for the entire country)
+Blank - no data
+
+
+```{r}
+clean_policy_data <- function(dataset) {
+  policy_data_clean <- dataset %>% 
+    select(c(Date, C2M_Workplace.closing, C2M_Flag)) %>% 
+    mutate(Date = ymd(Date)) %>% 
+    mutate(Year = year(Date), Month = month(Date)) %>% 
+    group_by(Year, Month) %>% 
+    summarise(num_days = n(),
+              workplace_0 = sum(C2M_Workplace.closing == 0),
+              workplace_1 = sum(C2M_Workplace.closing == 1),
+              workplace_2 = sum(C2M_Workplace.closing == 2),
+              workplace_3 = sum(C2M_Workplace.closing == 3),
+              workplace_blank = sum(is.na(C2M_Workplace.closing)),
+              flag_0 = sum(C2M_Flag == 0),
+              flag_1 = sum(C2M_Flag == 1),
+              flag_blank = sum(is.na(C2M_Flag))) %>% 
+    mutate(flag_0 = ifelse(is.na(flag_0), 0, flag_0),
+           flag_1 = ifelse(is.na(flag_1), 0, flag_1))
+  return(policy_data_clean)
+}
 ```
+
+ 
+```{r}
+policy_mi_data_clean <- clean_policy_data(policy_mi_data)
+```
+
+
+#
+
 
 
 
