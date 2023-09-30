@@ -1,0 +1,29 @@
+---
+title: "Analysis S"
+author: "Sahana Rayan"
+date: "2023-09-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Load Libraries
+
+```{r}
+library(tidyverse)
+```
+
+
+# Read files
+
+```{r}
+mi_data <- read.csv("data_clean/Michigan_cleaned.csv")
+ok_data <- read.csv("data_clean/Oklahoma_cleaned.csv")
+ca_data <- read.csv("data_clean/California_cleaned.csv")
+ut_data <- read.csv("data_clean/Utah_cleaned.csv")
+wa_data <- read.csv("data_clean/Washington_cleaned.csv")
+```
+
