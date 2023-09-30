@@ -29,9 +29,17 @@ library(readxl)
 
 ```{r}
 # Path for policy data
-policy_file_path <- "data_policy_covid_economic/OxCGRT_compact_subnational_v1.csv"
+policy_file_path <- "data_policy_covid_economic_raw/OxCGRT_compact_subnational_v1.csv"
 # Path for Unemployment data for Michigan
-michigan_unemployment <- "data_policy_covid_economic/unemployment/Michigan_S_Unemployment.xlsx"
+michigan_unemployment <- "data_policy_covid_economic_raw/unemployment/Michigan_NS_Unemployment.xlsx"
+utah_unemployment <- "data_policy_covid_economic_raw/unemployment/Utah_NS_Unemployment.xlsx"
+cali_unemployment <- "data_policy_covid_economic_raw/unemployment/California_NS_Unemployment.xlsx"
+washington_unemployment <- "data_policy_covid_economic_raw/unemployment/Washington_NS_Unemployment.xlsx"
+oklahoma_unemployment <- "data_policy_covid_economic_raw/unemployment/Oklahoma_NS_Unemployment.xlsx"
+
+covid_cases_file_path <- "data_policy_covid_economic_raw/covid_data/covid_confirmed_usafacts.csv"
+covid_deaths_file_path <- "data_policy_covid_economic_raw/covid_data/covid_deaths_usafacts.csv"
+covid_population_file_path <- "data_policy_covid_economic_raw/covid_data/covid_county_population_usafacts.csv"
 ```
 
 
@@ -44,19 +52,24 @@ rm(policy_world_data)
 ```
 
 
-## Filter Data based on State of interest
+## Function - Filter Data based on State of interest
 
 ```{r}
-filter_by_state <- function(state){
+filter_by_state_policy <- function(state){
   policy_state_data <- policy_us_data %>% 
     filter(RegionCode == state)
   return(policy_state_data)
 }
 ```
 
+## Actual filtering on state(s)
 
 ```{r}
-policy_mi_data <- filter_by_state("US_MI")
+policy_mi_data <- filter_by_state_policy("US_MI")
+policy_ok_data <- filter_by_state_policy("US_OK")
+policy_ca_data <- filter_by_state_policy("US_CA")
+policy_ut_data <- filter_by_state_policy("US_UT")
+policy_wa_data <- filter_by_state_policy("US_WA")
 ```
 
 
@@ -65,10 +78,56 @@ policy_mi_data <- filter_by_state("US_MI")
 
 ```{r}
 unemployment_mi_data <- read_excel(michigan_unemployment)
+unemployment_ok_data <- read_excel(oklahoma_unemployment)
+unemployment_ca_data <- read_excel(cali_unemployment)
+unemployment_ut_data <- read_excel(utah_unemployment)
+unemployment_wa_data <- read_excel(washington_unemployment)
+```
+
+## Covid data 
+
+```{r}
+covid_cases <- read.csv(covid_cases_file_path)
+covid_population <- read.csv(covid_population_file_path)
+covid_deaths <- read.csv(covid_deaths_file_path)
+```
+
+## Function - Filter Data based on State of interest
+
+```{r}
+filter_by_state_covid <- function(data_covid, state){
+  covid_state_data <- data_covid %>% 
+    filter(State == state)
+  return(covid_state_data)
+}
+```
+
+```{r}
+covid_mi_cases <- filter_by_state_covid(covid_cases, "MI")
+covid_mi_population <- filter_by_state_covid(covid_population, "MI")
+covid_mi_deaths <- filter_by_state_covid(covid_deaths, "MI")
+
+covid_ok_cases <- filter_by_state_covid(covid_cases, "OK")
+covid_ok_population <- filter_by_state_covid(covid_population, "OK")
+covid_ok_deaths <- filter_by_state_covid(covid_deaths, "OK")
+
+covid_ca_cases <- filter_by_state_covid(covid_cases, "CA")
+covid_ca_population <- filter_by_state_covid(covid_population, "CA")
+covid_ca_deaths <- filter_by_state_covid(covid_deaths, "CA")
+
+covid_ut_cases <- filter_by_state_covid(covid_cases, "UT")
+covid_ut_population <- filter_by_state_covid(covid_population, "UT")
+covid_ut_deaths <- filter_by_state_covid(covid_deaths, "UT")
+
+covid_wa_cases <- filter_by_state_covid(covid_cases, "WA")
+covid_wa_population <- filter_by_state_covid(covid_population, "WA")
+covid_wa_deaths <- filter_by_state_covid(covid_deaths, "WA")
 ```
 
 
-# Subsetting, Merging and Cleaning of Policy Data
+
+
+# Subsetting and Cleaning of Policy Data
 
 C2M_Workplace.closing is an ordinal variable which takes on these values
 0 - no measures
@@ -82,10 +141,11 @@ C2M_flag is an indicator variable which means
 1- general (for the entire country)
 Blank - no data
 
+## Function to do the cleaning
 
 ```{r}
-clean_policy_data <- function(dataset) {
-  policy_data_clean <- dataset %>% 
+clean_policy_data <- function(dataset_policy) {
+  policy_data_clean <- dataset_policy %>% 
     select(c(Date, C2M_Workplace.closing, C2M_Flag)) %>% 
     mutate(Date = ymd(Date)) %>% 
     mutate(Year = year(Date), Month = month(Date)) %>% 
@@ -106,12 +166,156 @@ clean_policy_data <- function(dataset) {
 ```
 
  
+## Run it on a specific state(s)
+
 ```{r}
 policy_mi_data_clean <- clean_policy_data(policy_mi_data)
+policy_ok_data_clean <- clean_policy_data(policy_ok_data)
+policy_ca_data_clean <- clean_policy_data(policy_ca_data)
+policy_ut_data_clean <- clean_policy_data(policy_ut_data)
+policy_wa_data_clean <- clean_policy_data(policy_wa_data)
+
 ```
 
 
-#
+# Subsetting and Cleaning Unemployment data
+
+## Function to do it
+
+```{r}
+clean_unemployment_data <- function(dataset_unemployment) {
+  unemployment_data_clean <- dataset_unemployment %>% 
+    filter(Year != 2019) %>% 
+    rename("Month" = "Period") %>% 
+    mutate(Month = recode(Month,
+                          Jan = 1, Feb = 2,Mar = 3, Apr = 4, May = 5, Jun = 6,
+                          Jul = 7, Aug = 8, Sep = 9, Oct = 10, Nov = 11, Dec = 12))
+}
+```
+
+## Run it on specific states
+
+```{r}
+unemployment_mi_clean <- clean_unemployment_data(unemployment_mi_data)
+unemployment_ok_clean <- clean_unemployment_data(unemployment_ok_data)
+unemployment_ca_clean <- clean_unemployment_data(unemployment_ca_data)
+unemployment_ut_clean <- clean_unemployment_data(unemployment_ut_data)
+unemployment_wa_clean <- clean_unemployment_data(unemployment_wa_data)
+
+```
+
+# Merging the two data frames
+
+## Function to do it
+
+```{r}
+merge_data <- function(unemployment, policy) {
+  merged <- inner_join(unemployment, policy,
+                       by = join_by("Year" == "Year", "Month" == "Month") )
+}
+```
+
+
+## Actually doing it on the dataframe
+
+```{r}
+merged_mi_data <- merge_data(unemployment_mi_clean, policy_mi_data_clean)
+merged_ok_data <- merge_data(unemployment_ok_clean, policy_ok_data_clean)
+merged_ca_data <- merge_data(unemployment_ca_clean, policy_ca_data_clean)
+merged_ut_data <- merge_data(unemployment_ut_clean, policy_ut_data_clean)
+merged_wa_data <- merge_data(unemployment_wa_clean, policy_wa_data_clean)
+
+```
+
+
+# Subsetting, merging, and cleaning covid data
+
+
+```{r}
+clean_covid_data <- function(covid_data) {
+  clean_covid_data <- covid_data %>% 
+    pivot_longer(cols = 5:ncol(covid_data),
+                 names_to = "Date",
+                 values_to = "Value") %>% 
+    group_by(Date) %>% 
+    summarise(sum_value = sum(Value)) %>% 
+    mutate(Date = ymd(str_sub(Date, start = 2, end = -1)))  %>% 
+    mutate(new_value = sum_value - lag(sum_value, default = 0)) %>%
+    mutate(Year = year(Date), Month = month(Date)) %>%
+    group_by(Year, Month) %>%
+    summarise(sum_val = sum(new_value))
+  return(clean_covid_data)
+}
+```
+
+```{r}
+covid_mi_cases_clean <- clean_covid_data(covid_mi_cases) %>% 
+  rename("Case Count" = sum_val)
+covid_mi_deaths_clean <- clean_covid_data(covid_mi_deaths) %>% 
+  rename("Covid Deaths" = sum_val)
+covid_mi_clean <- inner_join(covid_mi_cases_clean, covid_mi_deaths_clean, 
+                             by = join_by("Year" == "Year", "Month" == "Month"))
+
+covid_ok_cases_clean <- clean_covid_data(covid_ok_cases) %>% 
+  rename("Case Count" = sum_val)
+covid_ok_deaths_clean <- clean_covid_data(covid_ok_deaths) %>% 
+  rename("Covid Deaths" = sum_val)
+covid_ok_clean <- inner_join(covid_ok_cases_clean, covid_ok_deaths_clean, 
+                             by = join_by("Year" == "Year", "Month" == "Month"))
+
+covid_ca_cases_clean <- clean_covid_data(covid_ca_cases) %>% 
+  rename("Case Count" = sum_val)
+covid_ca_deaths_clean <- clean_covid_data(covid_ca_deaths) %>% 
+  rename("Covid Deaths" = sum_val)
+covid_ca_clean <- inner_join(covid_ca_cases_clean, covid_ca_deaths_clean, 
+                             by = join_by("Year" == "Year", "Month" == "Month"))
+
+covid_ut_cases_clean <- clean_covid_data(covid_ut_cases) %>% 
+  rename("Case Count" = sum_val)
+covid_ut_deaths_clean <- clean_covid_data(covid_ut_deaths) %>% 
+  rename("Covid Deaths" = sum_val)
+covid_ut_clean <- inner_join(covid_ut_cases_clean, covid_ut_deaths_clean, 
+                             by = join_by("Year" == "Year", "Month" == "Month"))
+
+covid_wa_cases_clean <- clean_covid_data(covid_wa_cases) %>% 
+  rename("Case Count" = sum_val)
+covid_wa_deaths_clean <- clean_covid_data(covid_wa_deaths) %>% 
+  rename("Covid Deaths" = sum_val)
+covid_wa_clean <- inner_join(covid_wa_cases_clean, covid_wa_deaths_clean, 
+                             by = join_by("Year" == "Year", "Month" == "Month"))
+```
+
+
+# Final merge
+
+```{r}
+merged_mi_data <- merge_data(merged_mi_data, covid_mi_clean)
+merged_ok_data <- merge_data(merged_ok_data, covid_ok_clean)
+merged_ca_data <- merge_data(merged_ca_data, covid_ca_clean)
+merged_ut_data <- merge_data(merged_ut_data, covid_ut_clean)
+merged_wa_data <- merge_data(merged_wa_data, covid_wa_clean)
+
+```
+
+
+# Save data
+
+```{r}
+directory <- "data_clean/"
+write.csv(merged_mi_data, file = paste0(directory, "Michigan_cleaned.csv"))
+write.csv(merged_ok_data, file = paste0(directory, "Oklahoma_cleaned.csv"))
+write.csv(merged_ca_data, file = paste0(directory, "California_cleaned.csv"))
+write.csv(merged_ut_data, file = paste0(directory, "Utah_cleaned.csv"))
+write.csv(merged_wa_data, file = paste0(directory, "Washington_cleaned.csv"))
+
+```
+
+
+
+
+
+
+
 
 
 
