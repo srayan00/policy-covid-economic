@@ -1,0 +1,175 @@
+---
+title: "604proj2"
+author: "zhiwei"
+date: "2023-10-02"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library(dplyr)
+library(readr)
+library(tidyr)
+```
+
+
+## Data concatenation
+
+```{r}
+calculate_policy_variable <- function(df) {
+  df$total_days <- rowSums(df[, c('workplace_0', 'workplace_1', 'workplace_2', 'workplace_3', 'workplace_blank')], na.rm=TRUE)
+  df$policy_variable <- (df$workplace_0 * 0 + 
+                         df$workplace_1 * 1 + 
+                         df$workplace_2 * 2 + 
+                         df$workplace_3 * 3) / df$total_days
+  return(df)
+}
+
+file_paths <- list(
+  California = 'data_clean/California_cleaned.csv',
+  Utah = 'data_clean/Utah_cleaned.csv',
+  Michigan = 'data_clean/Michigan_cleaned.csv',
+  Oklahoma = 'data_clean/Oklahoma_cleaned.csv',
+  Washington = 'data_clean/Washington_cleaned.csv'
+)
+
+combined_data <- data.frame()
+
+for (state in names(file_paths)) {
+  path <- file_paths[[state]]
+  df <- read_csv(path)
+  df <- calculate_policy_variable(df)
+  df$state <- state
+  df$state_for_dummy <- state
+  combined_data <- rbind(combined_data, df)
+}
+combined_data$covid_case_rate <- combined_data$`Case Count` / combined_data$`civilian noninstitutional population`
+combined_data$covid_death_rate <- combined_data$`Covid Deaths` / combined_data$`civilian noninstitutional population`
+# Create dummy variables for each state
+combined_data <- combined_data %>%
+  mutate(state_for_dummy = as.factor(state_for_dummy)) %>%
+  pivot_wider(names_from = state_for_dummy, values_from = state_for_dummy, 
+              values_fill = 0, values_fn = length)
+head(combined_data)
+```
+
+
+
+```{r}
+combined_data <- combined_data %>%
+  group_by(state) %>%
+  arrange(state) %>%
+  mutate(
+    lagged_policy_variable = lag(policy_variable, 1),
+    lagged_covid_death_rate = lag(covid_death_rate, 1),
+    lagged_covid_case_rate = lag(covid_case_rate, 1),
+    lagged_unemployment_rate = lag(`unemployment rate`, 1)
+  ) %>%
+  ungroup()
+combined_data <- combined_data %>%
+  drop_na(lagged_unemployment_rate)
+```
+
+```{r}
+#scaling
+combined_data$diff_covid_death_rate = 100 * (combined_data$covid_death_rate - combined_data$lagged_covid_death_rate)
+combined_data$lagged_covid_death_rate = 100 * combined_data$lagged_covid_death_rate
+combined_data$covid_death_rate = 100 * combined_data$covid_death_rate
+combined_data$diff_covid_case_rate = combined_data$covid_case_rate - combined_data$lagged_covid_case_rate
+combined_data$diff_policy_variable = combined_data$policy_variable - combined_data$lagged_policy_variable
+```
+
+
+## model B
+
+### first stage
+
+```{r}
+X_first_stage_combined_lagged_policy <- combined_data %>%
+  select(diff_covid_case_rate, diff_covid_death_rate, lagged_policy_variable, starts_with("state"))
+
+y_first_stage_combined_lagged_policy <- combined_data$diff_policy_variable
+
+first_stage_model_combined_lagged_policy <- lm(y_first_stage_combined_lagged_policy ~ ., data = X_first_stage_combined_lagged_policy)
+
+combined_data$predicted_policy_variable_combined_lagged_policy <- predict(first_stage_model_combined_lagged_policy, X_first_stage_combined_lagged_policy)
+summary(first_stage_model_combined_lagged_policy)
+```
+
+### second stage
+
+```{r}
+combined_data <- combined_data %>%
+  group_by(state) %>%
+  arrange(state) %>%
+  mutate(lagged_predicted_policy_variable = lag(predicted_policy_variable_combined_lagged_policy, 1)) %>%
+  ungroup()
+
+combined_data <- combined_data %>%
+  drop_na(lagged_predicted_policy_variable)
+
+combined_data$diff_predicted_policy_variable = combined_data$predicted_policy_variable_combined_lagged_policy - combined_data$lagged_predicted_policy_variable
+
+X_second_stage_lagged_policy <- combined_data %>%
+  select(predicted_policy_variable_combined_lagged_policy, diff_predicted_policy_variable, lagged_unemployment_rate)
+
+y_second_stage_lagged_policy <- combined_data$`unemployment rate`
+
+second_stage_model_lagged_policy <- lm(y_second_stage_lagged_policy ~ ., data = X_second_stage_lagged_policy)
+summary(second_stage_model_lagged_policy)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
