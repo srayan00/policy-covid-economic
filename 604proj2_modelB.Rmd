@@ -11,6 +11,7 @@ output:
 library(dplyr)
 library(readr)
 library(tidyr)
+library(ggplot2)
 ```
 
 
@@ -73,9 +74,9 @@ combined_data <- combined_data %>%
 
 ```{r}
 #scaling
-combined_data$diff_covid_death_rate = 100 * (combined_data$covid_death_rate - combined_data$lagged_covid_death_rate)
-combined_data$lagged_covid_death_rate = 100 * combined_data$lagged_covid_death_rate
-combined_data$covid_death_rate = 100 * combined_data$covid_death_rate
+combined_data$diff_covid_death_rate =  (combined_data$covid_death_rate - combined_data$lagged_covid_death_rate)
+combined_data$lagged_covid_death_rate = combined_data$lagged_covid_death_rate
+combined_data$covid_death_rate = combined_data$covid_death_rate
 combined_data$diff_covid_case_rate = combined_data$covid_case_rate - combined_data$lagged_covid_case_rate
 combined_data$diff_policy_variable = combined_data$policy_variable - combined_data$lagged_policy_variable
 ```
@@ -86,8 +87,10 @@ combined_data$diff_policy_variable = combined_data$policy_variable - combined_da
 ### first stage
 
 ```{r}
+# X_first_stage_combined_lagged_policy <- combined_data %>%
+#   select(diff_covid_case_rate, diff_covid_death_rate, lagged_policy_variable, starts_with("state"))
 X_first_stage_combined_lagged_policy <- combined_data %>%
-  select(diff_covid_case_rate, diff_covid_death_rate, lagged_policy_variable, starts_with("state"))
+   select(diff_covid_case_rate, diff_covid_death_rate, starts_with("state"))
 
 y_first_stage_combined_lagged_policy <- combined_data$diff_policy_variable
 
@@ -112,12 +115,26 @@ combined_data <- combined_data %>%
 combined_data$diff_predicted_policy_variable = combined_data$predicted_policy_variable_combined_lagged_policy - combined_data$lagged_predicted_policy_variable
 
 X_second_stage_lagged_policy <- combined_data %>%
-  select(predicted_policy_variable_combined_lagged_policy, diff_predicted_policy_variable, lagged_unemployment_rate)
+  select(predicted_policy_variable_combined_lagged_policy, lagged_unemployment_rate)
 
 y_second_stage_lagged_policy <- combined_data$`unemployment rate`
 
 second_stage_model_lagged_policy <- lm(y_second_stage_lagged_policy ~ ., data = X_second_stage_lagged_policy)
 summary(second_stage_model_lagged_policy)
+```
+
+
+```{r}
+data.frame(residuals = resid(second_stage_model_lagged_policy), fitted = fitted(second_stage_model_lagged_policy)) %>% 
+  ggplot() +
+  geom_point(aes(x = fitted, y = residuals)) +
+  geom_hline(yintercept = 0) +
+  labs(
+    x = "Fitted Ys",
+    y = "Residuals",
+    title = "Residual Plot for Model B"
+  ) +
+  theme_bw()
 ```
 
 
