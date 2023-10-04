@@ -11,6 +11,7 @@ output:
 library(dplyr)
 library(readr)
 library(tidyr)
+library(ggplot2)
 ```
 
 
@@ -79,9 +80,9 @@ combined_data <- combined_data %>%
 
 ```{r}
 #scaling
-combined_data$diff_covid_death_rate = 100 * (combined_data$covid_death_rate - combined_data$lagged_covid_death_rate)
-combined_data$lagged_covid_death_rate = 100 * combined_data$lagged_covid_death_rate
-combined_data$covid_death_rate = 100 * combined_data$covid_death_rate
+combined_data$diff_covid_death_rate = (combined_data$covid_death_rate - combined_data$lagged_covid_death_rate)
+combined_data$lagged_covid_death_rate =  combined_data$lagged_covid_death_rate
+combined_data$covid_death_rate = combined_data$covid_death_rate
 combined_data$diff_covid_case_rate = combined_data$covid_case_rate - combined_data$lagged_covid_case_rate
 combined_data$diff_policy_variable = combined_data$policy_variable - combined_data$lagged_policy_variable
 ```
@@ -98,6 +99,11 @@ first_stage_model_combined_lagged_policy <- lm(y_first_stage_combined_lagged_pol
 combined_data$predicted_policy_variable_combined_lagged_policy <- predict(first_stage_model_combined_lagged_policy, X_first_stage_combined_lagged_policy)
 summary(first_stage_model_combined_lagged_policy)
 ```
+
+```{r}
+summary(first_stage_model_combined_lagged_policy)$coefficients
+```
+
 
 
 
@@ -127,6 +133,21 @@ y_second_stage_lagged_policy <- combined_data$`unemployment rate`
 second_stage_model_lagged_policy <- lm(y_second_stage_lagged_policy ~ ., data = X_second_stage_lagged_policy)
 summary(second_stage_model_lagged_policy)
 ```
+
+```{r}
+data.frame(residuals = resid(second_stage_model_lagged_policy), fitted = fitted(second_stage_model_lagged_policy)) %>% 
+  ggplot() +
+  geom_point(aes(x = fitted, y = residuals)) +
+  geom_hline(yintercept = 0) +
+  labs(
+    x = "Fitted Ys",
+    y = "Residuals",
+    title = "Residual Plot for Model A"
+  ) +
+  theme_bw()
+```
+
+
 
 
 
